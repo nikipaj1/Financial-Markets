@@ -1,3 +1,8 @@
+library(ggplot2)
+library(dplyr)
+library(reshape2)
+
+
 ###############################################################
 # =============================================================
 # question 1 functions
@@ -117,7 +122,7 @@ asian_BSM <- function(M = 252, N = 10000, S0, r, sigma, k, Milstein = FALSE){
   h = 1/M
   
   # initialise matrix
-  matrix = matrix(0, N, M)
+  matrix = matrix(0, N, M+1)
   matrix[,1] <- S0
   
   # initialise return vector
@@ -125,11 +130,11 @@ asian_BSM <- function(M = 252, N = 10000, S0, r, sigma, k, Milstein = FALSE){
   
   if(!Milstein){
     for (i in 1:N){
-      for(j in 2:M){matrix[i,j] = rnorm(1)}
+      for(j in 2:(M+1)){matrix[i,j] = rnorm(1)}
       
       
       # calculate stock price values for each node
-      for (j in 2:M){
+      for (j in 2:(M+1)){
         matrix[i,j] = S_tph_EMM(matrix[i,j-1], r, h, sigma, matrix[i,j])
   
       }
@@ -138,17 +143,17 @@ asian_BSM <- function(M = 252, N = 10000, S0, r, sigma, k, Milstein = FALSE){
       A_T <- mean(matrix[i,])
   
       # calculate Asian-float returns
-      return_vect[i] = C_AT(S_T = matrix[i,M], S_avg = A_T*k)
+      return_vect[i] = C_AT(S_T = matrix[i,M+1], S_avg = A_T*k)
       
     }
   } else {
     
     for (i in 1:N){
-      for(j in 2:M){matrix[i,j] = rnorm(1)}
+      for(j in 2:(M+1)){matrix[i,j] = rnorm(1)}
       
       
       # calculate stock price values for each node
-      for (j in 2:M){
+      for (j in 2:(M+1)){
         matrix[i,j] = S_tph_MM(matrix[i,j-1], r, h, sigma, matrix[i,j])
         
       }
@@ -157,14 +162,29 @@ asian_BSM <- function(M = 252, N = 10000, S0, r, sigma, k, Milstein = FALSE){
       A_T <- mean(matrix[i,])
       
       # calculate Asian-float returns
-      return_vect[i] = C_AT(S_T = matrix[i,M], S_avg = A_T*k)
+      return_vect[i] = C_AT(S_T = matrix[i,M+1], S_avg = A_T*k)
+    }
   }
-  }
+  
+  x_vect <- seq(0,252,1)
+  df <- data.frame("x" = x_vect)
+  
+  for(i in 1:100) {
+    df[[paste("y", toString(i), sep = "")]] <- matrix[i,]
+  } 
+  
+  df <- melt(df ,  id.vars = 'x', variable.name = 'series')
+  
+  ggplot(df, aes(x,value)) + geom_line(aes(colour = series)) +
+  ggtitle("Asian Floating-Strike Call Option in Black-Sholes Model") +
+  labs(y="Stock price / $", x = "Day") +
+  theme(plot.title = element_text(hjust = 0.5))
+
+  
+  ggsave(paste('asian-floating-strike',"Melstein", toString(Milstein),".png",setp=""), device = "png", width = 40, height = 20, units = "cm")
   
   
   C_hat <- exp(-r)*mean(return_vect)
-  
-  return(C_hat)
   
 
 }
@@ -201,24 +221,24 @@ heston <- function(M,N,S0, V0, K, r, B, rho, kappa, theta, eta) {
   h = 1/M
   
   # initialise price matrix
-  mat_S = matrix(0, N, M)
+  mat_S = matrix(0, N, (M+1))
   mat_S[,1] <- S0
 
   # initialise volatility matrix
-  mat_V = matrix(0, N, M)
+  mat_V = matrix(0, N, (M+1))
   mat_V[,1] <- V0
   
   # initialise return vector
   return <- rep(0,N)
   
   for(i in 1:N) {
-    for(j in 2:M) {
+    for(j in 2:(M+1)) {
       mat_S[i,j] <- rnorm(1) 
       mat_V[i,j] <- rnorm(1) 
     }
     
     # calculate the returns and volatility
-    for(j in 2:M) {
+    for(j in 2:(M+1)) {
       epsilon <- rnorm(1)
       rnd <- rnorm(1)
       x_tph <- rho*epsilon + sqrt(1-rho^2)*rnd
@@ -235,6 +255,28 @@ heston <- function(M,N,S0, V0, K, r, B, rho, kappa, theta, eta) {
     
   }
   answer <- mean(return)
+  
+  
+  # Plot the simulation
+  x_vect <- seq(0,252,1)
+  df <- data.frame("x" = x_vect)
+  
+  for(i in 1:50) {
+    df[[paste("y", toString(i), sep = "")]] <- mat_S[i,]
+  } 
+  
+  df <- melt(df ,  id.vars = 'x', variable.name = 'series')
+  
+  ggplot(df, aes(x,value)) + geom_line(aes(colour = series)) +
+    ggtitle("Heston") +
+    labs(y="Stock price / $", x = "Day") +
+    theme(plot.title = element_text(hjust = 0.5))
+  
+  ggsave(paste('Heston',"rho", toString(rho), "theta", toString(theta),".png",sep=""), 
+         device = "png", 
+         width = 40, 
+         height = 20, 
+         units = "cm")
   
   return(list(answer))
 }
