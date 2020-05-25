@@ -12,6 +12,21 @@ library(reshape2)
 
 # function for matrix form binomial tree
 bin_tree <- function(S0, u, d, N) {
+  """ Function to calculate binomial trees based on the inputs
+      
+      The function calculates stock prices for each node in 
+      the discrete model. The calculation involves going up i times
+      and down j times for each entrance in the matrix. Then the value of the 
+      stock is S0 * u^i * d^j.
+     
+
+      @parameter S0: initial price of the stock
+      @parameter  u: the factor by which the price goes up
+      @parameter  d: the factor by which the price goes down
+      @parameter  N: the number of nodes
+
+      Return Tree:  Binomial tree expressed in a matrix form.
+  """
   tree <- matrix(NA, nrow = N+1, ncol = N+1)
   
   for (i in 1:(N+1)){
@@ -20,13 +35,19 @@ bin_tree <- function(S0, u, d, N) {
       tree[i,j] = S0 * u^(j-1) * d^(i-j)
     }
   }
-    
   return(tree)
 }
 
 
-# function to calculate the risk-neutral synthetic probability
 q_calc <- function(r,u,d) { 
+    """ Function to calculate the synthetic probability.
+
+        @parameter r: risk-free rate
+        @parameter  u: the factor by which the price goes up
+        @parameter  d: the factor by which the price goes down
+
+        Return q    synthetic probability
+    """
   return((1.0+r-d)/(u-d))
 }
 
@@ -37,6 +58,20 @@ put_C <- function(St, K) { return(pmax(K-St,0))}
 
 # function for the binomial tree, options price matrix and 
 opt_price_EU <- function(S0, u, d, N, r, K, type = "European",ex_type = "Call"){
+    """ Function to draw the binomial tree and calculate the stock prices.
+        
+        @parameter S0: initial price of the stock
+        @parameter  u: the factor by which the price goes up
+        @parameter  d: the factor by which the price goes down
+        @parameter  N: the number of nodes
+        @parameter  r: risk-free rate
+        @parameter  K: strike price
+
+        Return binomial_tree          -- binomial tree in the (N x N) matrix representation 
+               opt_price_matrix       -- Options price matrix
+               exer_mat               -- exercise matrix - matrix of ones and zeros showing whether the option is exercised at time t (American and European)
+               q                      -- synthetic probability
+    """
   
   # check for arbitrage
   if(!( (u > r + 1) & (r + 1 >= d) )){return("Your values of u, d and r permit arbitrage. Please check for u > 1+r > d.")}
@@ -118,6 +153,19 @@ C_AT <- function(S_T, S_avg){
 
 
 asian_BSM <- function(M = 252, N = 10000, S0, r, sigma, k, Milstein = FALSE){
+      """ Function to do Monte Carlo simulation of an Asian BSM. 
+        
+        @parameter  M: Number of trading days a year (inverse for step size)
+        @parameter  N: Number of alterantive worlds for simulation
+        @parameter S0: Initial price of the stock
+        @parameter  r: risk-free rate
+        @parameter  sigma: volatility
+        @parameter  k: 
+        @parameter  Milstein: If true: milstein method of simulation, otherwise Euler-Maruyama        
+
+        Return return_vector    -- vector with returns in each world that are then averaged
+    """
+  
   # define step size h
   h = 1/M
   
@@ -206,7 +254,6 @@ V_tph <- function(Vt, theta, kappa, eta, h, epsilon) {
 
 # function to calculate Down-And-Out Barrier call
 C_do <- function(vector, M, S_T, K, B) {
-  
   for(i in 1:M){
     if(vector[i] < B)
       return(0)
@@ -217,6 +264,23 @@ C_do <- function(vector, M, S_T, K, B) {
 
 
 heston <- function(M,N,S0, V0, K, r, B, rho, kappa, theta, eta) {
+    """ Function to do Monte Carlo simulation with Heston model
+        
+        @parameter  M: Number of trading days a year (inverse for step size)
+        @parameter  N: Number of alterantive worlds for simulation
+        @parameter S0: Initial price of the stock
+        @parameter  r: risk-free rate
+        @parameter  sigma: volatility
+        @parameter  K: 
+        @parameter rho: correlation between dWs, dWt
+        @parameter kappa: param
+        @parameter theta: param
+        @parameter eta: param
+        @parameter B  : boundary for down-and-out
+        @parameter  Milstein: If true: milstein method of simulation, otherwise Euler-Maruyama        
+
+        Return return_vector    -- vector with returns in each world that are then averaged
+    """
   # define step size
   h = 1/M
   
@@ -328,3 +392,4 @@ heston(M = 252,N = 100, S0 = 90, V0 = (0.06/1.15), K = 75, B = 70, r = (0.02/0.5
 
 
 # the result went even higher. this is because due to no correlation between volatility and the stock prices, the volatility is smaller (dW = sigma * h)
+# if there is no correlation, we get a symmetric smiles
